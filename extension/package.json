@@ -2,7 +2,7 @@
   "name": "free-llm-api-provider",
   "displayName": "Free LLM API Provider",
   "description": "Connect VS Code Chat to any OpenAI-compatible LLM endpoint. Supports 350+ models via FreeLLM API, automatic model discovery, secure key storage, and native Chat model picker integration.",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "publisher": "rsluna",
   "icon": "icon.png",
   "keywords": [
@@ -92,7 +92,8 @@
   },
   "scripts": {
     "package": "npx @vscode/vsce package",
-    "check": "node --check src/extension.js"
+    "check": "node --check src/extension.js && node --check src/language-model-provider.js && node --check src/settings-panel.js",
+    "test": "cd .. && node --test"
   },
   "devDependencies": {
     "@vscode/vsce": "^3.2.0"

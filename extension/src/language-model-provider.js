@@ -133,6 +133,21 @@ function toOpenAiMessages(vscode, messages) {
   });
 }
 
+const CONTEXT_OVERFLOW_PATTERN = /maximum context length|context length exceeded|context window|too many tokens|prompt is too long|reduce the length of the input|exceeds the model'?s context/i;
+
+function isContextOverflowError(error) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return CONTEXT_OVERFLOW_PATTERN.test(message);
+}
+
+function pickWidestContextModel(models) {
+  return (Array.isArray(models) ? models : [])
+    .filter((model) => typeof model?.id === 'string' && model.id.toLowerCase() !== FREELLM_AUTO_MODEL_ID)
+    .reduce((widest, model) => (
+      (model.maxInputTokens || 0) > (widest?.maxInputTokens || 0) ? model : widest
+    ), undefined);
+}
+
 function createLanguageModelChatProvider(
   vscode,
   getConfig,
@@ -171,7 +186,7 @@ function createLanguageModelChatProvider(
           ? 'FreeLLM Auto Best Pick (model ID: auto)'
           : `FreeLLM API model: ${model.id}`,
         version: typeof model.version === 'string' ? model.version : '1',
-        maxInputTokens: positiveNumber(model.max_input_tokens, model.context_length) || 128000,
+        maxInputTokens: positiveNumber(model.max_input_tokens, model.context_length, model.context_window) || 128000,
         maxOutputTokens: positiveNumber(model.max_output_tokens, model.max_completion_tokens) || 8192,
         capabilities: {
           toolCalling: getToolCallingCapability(model),
@@ -189,8 +204,7 @@ function createLanguageModelChatProvider(
     }
   }
 
-  async function provideLanguageModelChatResponse(model, messages, options, progress, token) {
-    const config = await getConfig();
+  async function runChatRequest(requestModelId, messages, options, progress, token, config, state) {
     const controller = new AbortController();
     const cancellation = token.onCancellationRequested(() => controller.abort());
     const tools = Array.isArray(options.tools) && options.tools.length
@@ -204,7 +218,7 @@ function createLanguageModelChatProvider(
       }))
       : undefined;
     const payload = {
-      model: getRequestModelId(model.id),
+      model: getRequestModelId(requestModelId),
       messages: toOpenAiMessages(vscode, messages),
       stream: true,
       ...(tools ? { tools, tool_choice: options.toolMode === vscode.LanguageModelChatToolMode.Required ? 'required' : 'auto' } : {}),
@@ -236,6 +250,7 @@ function createLanguageModelChatProvider(
         const choice = chunk?.choices?.[0];
         const delta = choice?.delta || choice?.message || {};
         if (typeof delta.content === 'string' && delta.content) {
+          state.reported = true;
           progress.report(new vscode.LanguageModelTextPart(delta.content));
         }
 
@@ -295,11 +310,49 @@ function createLanguageModelChatProvider(
 
       for (const [index, call] of toolCalls) {
         const input = JSON.parse(call.arguments || '{}');
+        state.reported = true;
         progress.report(new vscode.LanguageModelToolCallPart(call.id || `tool-${index}`, call.name, input));
       }
       log(`Chat request completed for model ${payload.model}.`);
     } finally {
       cancellation.dispose();
+    }
+  }
+
+  async function widestContextRequestId(token) {
+    try {
+      return pickWidestContextModel(await requestModels(token))?.id;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async function provideLanguageModelChatResponse(model, messages, options, progress, token) {
+    const config = await getConfig();
+    const requested = getRequestModelId(model.id);
+    const state = { reported: false };
+    // A context rejection is the upstream model being too small for the prompt,
+    // never the account running out of tokens. Keep the same prompt and move it
+    // to a wider route instead of failing the turn.
+    const retries = requested === 'auto'
+      ? [widestContextRequestId]
+      : [() => Promise.resolve('auto'), widestContextRequestId];
+
+    let attempt = requested;
+    for (let index = 0; ; index += 1) {
+      try {
+        return await runChatRequest(attempt, messages, options, progress, token, config, state);
+      } catch (error) {
+        const retryable = !state.reported
+          && !token.isCancellationRequested
+          && isContextOverflowError(error);
+        const next = retryable ? await retries[index]?.(token) : undefined;
+        if (!next || next === attempt) {
+          throw error;
+        }
+        log(`Model ${attempt} rejected the prompt for context limits; retrying on ${next}.`);
+        attempt = next;
+      }
     }
   }
 
@@ -315,6 +368,8 @@ module.exports = {
   AUTO_MODEL_LABEL,
   createLanguageModelChatProvider,
   getModelLabel,
+  isContextOverflowError,
+  pickWidestContextModel,
   getModelListSignature,
   isVisibleModel,
   getRequestModelId,

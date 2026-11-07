@@ -23,6 +23,8 @@ Open **FreeLLM: Open extension settings** from the Command Palette, or use the F
 
 In VS Code Chat and the FreeLLM extension panel, choose **FreeLLM Auto Router Best** (model ID `auto`) for the provider's recommended automatic route. OmniRoute-only entries such as `auto/best-free` are excluded from FreeLLM's model lists.
 
+When the route picked for a turn is too small for the prompt, the extension retries the same prompt instead of failing the turn: an `auto` request is retried on the model with the widest advertised context window, and a pinned model is retried on `auto` first. Retries only happen before any text is streamed, and only for context-limit errors, so rate limits and auth failures surface unchanged.
+
 The API key is stored in VS Code SecretStorage and is never placed in webview storage. Existing VS Code settings are retained only for compatibility with older installations.
 
 ## Development

@@ -7,8 +7,10 @@ const {
   getModelListSignature,
   getRequestModelId,
   getVSCodeModelId,
+  isContextOverflowError,
   isVisibleModel,
   parseModels,
+  pickWidestContextModel,
   toOpenAiMessages,
 } = require('../extension/src/language-model-provider');
 
@@ -197,6 +199,153 @@ test('provider emits a single tool call from a non-streaming response', async ()
     assert.equal(parts[0].name, 'lookup');
     assert.deepEqual(parts[0].input, { query: 'status' });
     assert.equal(requestedModel, 'auto');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('context overflow errors are recognised and narrow models are skipped', () => {
+  assert.equal(
+    isContextOverflowError(new Error('This model\'s maximum context length is 32768 tokens.')),
+    true
+  );
+  assert.equal(isContextOverflowError(new Error('HTTP 401: Unauthorized')), false);
+  assert.equal(isContextOverflowError('prompt is too long: 40000 tokens'), true);
+
+  const widest = pickWidestContextModel([
+    { id: 'freellm-auto-router-best', maxInputTokens: 262000 },
+    { id: 'small-model', maxInputTokens: 32768 },
+    { id: 'big-model', maxInputTokens: 1048576 },
+  ]);
+  assert.equal(widest.id, 'big-model');
+  assert.equal(pickWidestContextModel([]), undefined);
+});
+
+test('auto retries a context rejection on the widest advertised model', async () => {
+  const originalFetch = global.fetch;
+  const models = [];
+  const bodies = [];
+
+  global.fetch = async (_url, options) => {
+    if (options.method !== 'POST') {
+      return new Response(JSON.stringify({
+        data: [
+          { id: 'auto', name: 'Auto', context_window: 262000 },
+          { id: 'small-model', name: 'Small', context_window: 32768 },
+          { id: 'big-model', name: 'Big', context_window: 1048576 },
+        ],
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const model = JSON.parse(options.body).model;
+    models.push(model);
+    bodies.push(JSON.parse(options.body).messages.length);
+    if (model === 'auto') {
+      return new Response(JSON.stringify({
+        error: { message: "This model's maximum context length is 32768 tokens." },
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    return new Response('data: {"choices":[{"delta":{"content":"wide"}}]}\n\ndata: [DONE]\n\n', {
+      headers: { 'Content-Type': 'text/event-stream' },
+    });
+  };
+
+  try {
+    const provider = createLanguageModelChatProvider(vscode, () => ({ baseUrl: 'http://x/v1' }));
+    const parts = [];
+    await provider.provideLanguageModelChatResponse(
+      { id: 'freellm-auto-router-best' },
+      [{ role: vscode.LanguageModelChatMessageRole.User, content: [{ value: 'long prompt' }] }],
+      { tools: [], toolMode: vscode.LanguageModelChatToolMode.Auto },
+      { report: (part) => parts.push(part) },
+      createToken()
+    );
+
+    assert.deepEqual(models, ['auto', 'big-model']);
+    assert.deepEqual(bodies, [1, 1]);
+    assert.deepEqual(parts.map((part) => part.value), ['wide']);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('pinned model falls back to auto then to the widest model on context overflow', async () => {
+  const originalFetch = global.fetch;
+  const models = [];
+
+  global.fetch = async (_url, options) => {
+    if (options.method !== 'POST') {
+      return new Response(JSON.stringify({
+        data: [
+          { id: 'auto', context_window: 262000 },
+          { id: 'small-model', context_window: 32768 },
+          { id: 'big-model', context_window: 1048576 },
+        ],
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const model = JSON.parse(options.body).model;
+    models.push(model);
+    if (model !== 'big-model') {
+      return new Response(JSON.stringify({
+        error: { message: 'HTTP 400: This model\'s maximum context length is 32768 tokens.' },
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    return new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  try {
+    const provider = createLanguageModelChatProvider(vscode, () => ({ baseUrl: 'http://x/v1' }));
+    const parts = [];
+    await provider.provideLanguageModelChatResponse(
+      { id: 'small-model' },
+      [{ role: vscode.LanguageModelChatMessageRole.User, content: [{ value: 'long prompt' }] }],
+      { tools: [], toolMode: vscode.LanguageModelChatToolMode.Auto },
+      { report: (part) => parts.push(part) },
+      createToken()
+    );
+
+    assert.deepEqual(models, ['small-model', 'auto', 'big-model']);
+    assert.deepEqual(parts.map((part) => part.value), ['ok']);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('non-context errors are not retried', async () => {
+  const originalFetch = global.fetch;
+  let calls = 0;
+
+  global.fetch = async (_url, options) => {
+    if (options.method !== 'POST') {
+      return new Response(JSON.stringify({ data: [{ id: 'auto', context_window: 262000 }] }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    calls += 1;
+    return new Response(JSON.stringify({ error: { message: 'HTTP 429: rate limited' } }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  try {
+    const provider = createLanguageModelChatProvider(vscode, () => ({ baseUrl: 'http://x/v1' }));
+    await assert.rejects(
+      () => provider.provideLanguageModelChatResponse(
+        { id: 'freellm-auto-router-best' },
+        [{ role: vscode.LanguageModelChatMessageRole.User, content: [{ value: 'hi' }] }],
+        { tools: [], toolMode: vscode.LanguageModelChatToolMode.Auto },
+        { report: () => {} },
+        createToken()
+      ),
+      /429/
+    );
+    assert.equal(calls, 1);
   } finally {
     global.fetch = originalFetch;
   }
