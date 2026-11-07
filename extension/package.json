@@ -1,0 +1,100 @@
+{
+  "name": "free-llm-api-provider",
+  "displayName": "Free LLM API Provider",
+  "description": "Connect VS Code Chat to any OpenAI-compatible LLM endpoint. Supports 350+ models via FreeLLM API, automatic model discovery, secure key storage, and native Chat model picker integration.",
+  "version": "0.3.5",
+  "publisher": "rsluna",
+  "icon": "icon.png",
+  "keywords": [
+    "llm",
+    "ai",
+    "chat",
+    "openai",
+    "free",
+    "freellm",
+    "model",
+    "copilot",
+    "language model",
+    "openai-compatible"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reginaldosevero/FreeLLMAPI-Provider"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "AI",
+    "Other",
+    "Machine Learning"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "freellmapi.testConnection",
+        "title": "FreeLLM: Test connection"
+      },
+      {
+        "command": "freellmapi.selectModel",
+        "title": "FreeLLM: Select model"
+      },
+      {
+        "command": "freellmapi.showLogs",
+        "title": "FreeLLM: Show logs"
+      },
+      {
+        "command": "freellmapi.saveSettings",
+        "title": "FreeLLM: Configure and save settings"
+      },
+      {
+        "command": "freellmapi.resetSettings",
+        "title": "FreeLLM: Reset settings"
+      },
+      {
+        "command": "freellmapi.openSettings",
+        "title": "FreeLLM: Open extension settings"
+      }
+    ],
+    "languageModelChatProviders": [
+      {
+        "vendor": "severo-freellmapi",
+        "displayName": "FreeLLM API",
+        "managementCommand": "freellmapi.openSettings"
+      }
+    ],
+    "configuration": {
+      "title": "FreeLLM API Provider",
+      "properties": {
+        "freeLlmProvider.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:3000/v1",
+          "description": "Base URL for your custom OpenAI-compatible endpoint"
+        },
+        "freeLlmProvider.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Legacy API key setting. Use FreeLLM: Configure and save settings to store it securely.",
+          "scope": "application"
+        },
+        "freeLlmProvider.model": {
+          "type": "string",
+          "default": "auto",
+          "description": "Model ID from your provider; auto lets the provider route the request"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx @vscode/vsce package",
+    "check": "node --check src/extension.js"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.0"
+  }
+}

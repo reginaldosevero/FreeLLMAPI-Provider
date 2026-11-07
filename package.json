@@ -1,0 +1,21 @@
+{
+  "name": "freellmapi-provider",
+  "version": "1.0.0",
+  "description": "OpenAI-compatible AI API provider starter",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reginaldosevero/FreeLLMAPI-Provider"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
