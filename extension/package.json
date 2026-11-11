@@ -76,6 +76,11 @@
           "id": "freellmapi/settingsView",
           "name": "Settings",
           "when": "true"
+        },
+        {
+          "id": "freellmapi/logsView",
+          "name": "Logs",
+          "when": "true"
         }
       ]
     },

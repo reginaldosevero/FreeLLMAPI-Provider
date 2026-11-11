@@ -443,7 +443,9 @@ function activate(context) {
     : 'Reusing the native VS Code Chat model provider registered by another copy.');
 
   // Register sidebar views declared in package.json (activity bar container freellmapi-sidebar).
-  // Only settingsView is registered - open Settings panel when clicking the extension icon.
+  // Settings opens when clicking the extension icon.
+  // Logs view is also available in the sidebar.
+  registerLogsView(context, outputChannel);
   registerSettingsView(context, getConfig, applyPanelSettings, resetPanelSettings);
 
   context.subscriptions.push(
