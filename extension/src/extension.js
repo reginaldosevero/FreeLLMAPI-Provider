@@ -8,6 +8,9 @@ const {
   parseModels,
 } = require('./language-model-provider');
 const { createSettingsPanel } = require('./settings-panel');
+const { registerChatView } = require('./chatView');
+const { registerLogsView } = require('./logsView');
+const { registerSettingsView } = require('./settingsView');
 
 const API_KEY_SECRET = 'freeLlmProvider.apiKey';
 const DEFAULT_BASE_URL = 'http://localhost:3000/v1';
@@ -341,6 +344,22 @@ async function sendSampleChat() {
   }
 }
 
+function registerSafely(context, register, label, log) {
+  try {
+    const disposable = register();
+    if (disposable) {
+      context.subscriptions.push(disposable);
+    }
+    return true;
+  } catch (error) {
+    // A second installed copy of this extension shares the vendor and command
+    // IDs, so a duplicate registration must not abort activation: the copy that
+    // owns the contribution still serves it.
+    log(`${label} is already registered by another FreeLLM extension copy; skipping.`);
+    return false;
+  }
+}
+
 function activate(context) {
   extensionContext = context;
   const outputChannel = vscode.window.createOutputChannel('FreeLLM API');
@@ -392,29 +411,41 @@ function activate(context) {
     void updateConnectionStatus();
   }, 30000);
 
-  const testConnectionCommand = vscode.commands.registerCommand('freellmapi.testConnection', async () => {
+  registerSafely(context, () => vscode.commands.registerCommand('freellmapi.testConnection', async () => {
     await testConnection();
     await sendSampleChat();
-  });
+  }), 'Command freellmapi.testConnection', log);
 
-  const selectModelCommand = vscode.commands.registerCommand('freellmapi.selectModel', selectModel);
+  registerSafely(context, () => vscode.commands.registerCommand('freellmapi.selectModel', selectModel), 'Command freellmapi.selectModel', log);
 
-  const openSettingsCommand = vscode.commands.registerCommand('freellmapi.openSettings', () => {
+  registerSafely(context, () => vscode.commands.registerCommand('freellmapi.openSettings', () => {
     openExtensionSettingsPanel();
-  });
+  }), 'Command freellmapi.openSettings', log);
 
-  const showLogsCommand = vscode.commands.registerCommand('freellmapi.showLogs', () => {
+  registerSafely(context, () => vscode.commands.registerCommand('freellmapi.showLogs', () => {
     outputChannel.show(true);
-  });
+  }), 'Command freellmapi.showLogs', log);
 
-  const saveSettingsCommand = vscode.commands.registerCommand('freellmapi.saveSettings', saveSettings);
-  const resetSettingsCommand = vscode.commands.registerCommand('freellmapi.resetSettings', resetSettings);
+  registerSafely(context, () => vscode.commands.registerCommand('freellmapi.saveSettings', saveSettings), 'Command freellmapi.saveSettings', log);
+  registerSafely(context, () => vscode.commands.registerCommand('freellmapi.resetSettings', resetSettings), 'Command freellmapi.resetSettings', log);
 
-  const languageModelProvider = vscode.lm.registerLanguageModelChatProvider(
-    'severo-freellmapi',
-    createLanguageModelChatProvider(vscode, getConfig, log, modelInformationChanged.event)
+  const providerRegistered = registerSafely(
+    context,
+    () => vscode.lm.registerLanguageModelChatProvider(
+      'severo-freellmapi',
+      createLanguageModelChatProvider(vscode, getConfig, log, modelInformationChanged.event)
+    ),
+    'Model provider severo-freellmapi',
+    log
   );
-  log('Registered the native VS Code Chat model provider.');
+  log(providerRegistered
+    ? 'Registered the native VS Code Chat model provider.'
+    : 'Reusing the native VS Code Chat model provider registered by another copy.');
+
+  // Register sidebar views declared in package.json (activity bar container freellmapi-sidebar).
+  registerChatView(context, getConfig, provider);
+  registerLogsView(context, outputChannel);
+  registerSettingsView(context, getConfig, applyPanelSettings, resetPanelSettings);
 
   context.subscriptions.push(
     outputChannel,
@@ -422,14 +453,7 @@ function activate(context) {
     configurationChanged,
     secretChanged,
     statusBarItem,
-    { dispose: () => clearInterval(connectionCheckInterval) },
-    testConnectionCommand,
-    selectModelCommand,
-    openSettingsCommand,
-    showLogsCommand,
-    saveSettingsCommand,
-    resetSettingsCommand,
-    languageModelProvider
+    { dispose: () => clearInterval(connectionCheckInterval) }
   );
 }
 

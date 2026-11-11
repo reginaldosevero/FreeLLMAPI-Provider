@@ -133,7 +133,7 @@ function toOpenAiMessages(vscode, messages) {
   });
 }
 
-const CONTEXT_OVERFLOW_PATTERN = /maximum context length|context length exceeded|context window|too many tokens|prompt is too long|reduce the length of the input|exceeds the model'?s context/i;
+const CONTEXT_OVERFLOW_PATTERN = /maximum context length|context length exceeded|context[\s/]*token window|too many tokens|prompt is too long|request is too large|reduce the (length of the input|prompt)|exceeds the model'?s context/i;
 
 function isContextOverflowError(error) {
   const message = error instanceof Error ? error.message : String(error ?? '');

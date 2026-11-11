@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Circle background (dark gray like VS Code theme) -->
+  <circle cx="64" cy="64" r="58" fill="#444" stroke="#666" stroke-width="2"/>
+  <!-- Inner circle -->
+  <circle cx="64" cy="64" r="48" fill="#2a2d2e"/>
+  <!-- Black dot in center -->
+  <circle cx="64" cy="64" r="18" fill="#000"/>
+</svg>
