@@ -76,16 +76,6 @@
           "id": "freellmapi/settingsView",
           "name": "Settings",
           "when": "true"
-        },
-        {
-          "id": "freellmapi/chatView",
-          "name": "Chat",
-          "when": "true"
-        },
-        {
-          "id": "freellmapi/logsView",
-          "name": "Logs",
-          "when": "true"
         }
       ]
     },
