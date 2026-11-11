@@ -103,10 +103,10 @@ ext install rsluna.free-llm-api-provider
 - **Auto Router Best**: Uses FreeLLM's best-auto router which automatically selects the best
   available model based on your request. This appears as "FreeLLM Auto Router Best" in the
   model picker.
-- **Sidebar Views**: Three dedicated views available in the Activity Bar:
+- **Sidebar Views**: Three dedicated views available in the Activity Bar (click the extension icon to open Settings):
+  - **Settings**: Configure base URL, API key, and model selection (opens first when you click the extension icon)
   - **Chat**: Dedicated chat panel with message history and conversation support
   - **Logs**: View application logs and responses
-  - **Settings**: Configure base URL, API key, and model selection
 - **Secure Key Storage**: API keys are stored in VS Code's SecretStorage, not in settings.json
 - **Automatic Model Discovery**: Model list automatically refreshes every 30 seconds
 - **Model Filtering**: Hidden models like `auto-route` and `auto/best-free` are filtered from
