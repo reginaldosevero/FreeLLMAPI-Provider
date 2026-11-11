@@ -8,9 +8,6 @@ const {
   parseModels,
 } = require('./language-model-provider');
 const { createSettingsPanel } = require('./settings-panel');
-const { registerChatView } = require('./chatView');
-const { registerLogsView } = require('./logsView');
-const { registerSettingsView } = require('./settingsView');
 
 const API_KEY_SECRET = 'freeLlmProvider.apiKey';
 const DEFAULT_BASE_URL = 'http://localhost:3000/v1';
@@ -441,12 +438,6 @@ function activate(context) {
   log(providerRegistered
     ? 'Registered the native VS Code Chat model provider.'
     : 'Reusing the native VS Code Chat model provider registered by another copy.');
-
-  // Register sidebar views declared in package.json (activity bar container freellmapi-sidebar).
-  // Settings opens when clicking the extension icon.
-  // Logs view is also available in the sidebar.
-  registerLogsView(context, outputChannel);
-  registerSettingsView(context, getConfig, applyPanelSettings, resetPanelSettings);
 
   context.subscriptions.push(
     outputChannel,

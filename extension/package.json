@@ -61,29 +61,6 @@
         "title": "FreeLLM: Open extension settings"
       }
     ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "freellmapi-sidebar",
-          "title": "FreeLLM API",
-          "icon": "icon.png"
-        }
-      ]
-    },
-    "views": {
-      "freellmapi-sidebar": [
-        {
-          "id": "freellmapi/settingsView",
-          "name": "Settings",
-          "when": "true"
-        },
-        {
-          "id": "freellmapi/logsView",
-          "name": "Logs",
-          "when": "true"
-        }
-      ]
-    },
     "languageModelChatProviders": [
       {
         "vendor": "severo-freellmapi",
