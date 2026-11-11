@@ -95,6 +95,14 @@ function renderSettingsPanel(webview) {
   <h1>FreeLLM API</h1>
   <form id="settingsForm" novalidate>
     <div class="field">
+      <label class="field-label" for="presetSelect">Preset</label>
+      <select id="presetSelect" aria-label="Preset">
+        <option value="freellm">FreeLLM Cloud</option>
+        <option value="localhost">Localhost</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="field">
       <label class="field-label" for="baseUrl">Endpoint base URL</label>
       <input id="baseUrl" name="baseUrl" type="url" autocomplete="url" required aria-describedby="baseUrlHint">
       <span class="hint" id="baseUrlHint">Use the OpenAI-compatible base URL, including /v1.</span>
@@ -129,6 +137,7 @@ function renderSettingsPanel(webview) {
     (function () {
       const vscode = acquireVsCodeApi();
       const baseUrl = document.getElementById('baseUrl');
+      const presetSelect = document.getElementById('presetSelect');
       const apiKey = document.getElementById('apiKey');
       const clearKey = document.getElementById('clearKey');
       const modelSelect = document.getElementById('modelSelect');
@@ -141,8 +150,27 @@ function renderSettingsPanel(webview) {
       const status = document.getElementById('status');
       const autoModelLabel = 'FreeLLM Auto Router Best (router picks the best available model)';
       const hiddenModelIds = ['auto-route', 'auto/best-free'];
+      const presets = { freellm: 'https://freellmapi.co/v1', localhost: 'http://localhost:3000/v1' };
       let availableModels = [];
       let selectedModelId = 'auto';
+
+      function syncPresetFromBaseUrl() {
+        const current = String(baseUrl.value || '').replace(/\/+$/, '');
+        if (current === presets.freellm) {
+          presetSelect.value = 'freellm';
+        } else if (current === presets.localhost) {
+          presetSelect.value = 'localhost';
+        } else {
+          presetSelect.value = 'custom';
+        }
+      }
+
+      presetSelect.addEventListener('change', () => {
+        if (presets[presetSelect.value]) {
+          baseUrl.value = presets[presetSelect.value];
+        }
+      });
+      baseUrl.addEventListener('input', syncPresetFromBaseUrl);
 
       function showStatus(message, kind) {
         status.textContent = message || '';
@@ -236,6 +264,7 @@ function renderSettingsPanel(webview) {
         const message = event.data;
         if (message.type === 'settings') {
           baseUrl.value = message.baseUrl || '';
+          syncPresetFromBaseUrl();
           keyState.textContent = message.hasApiKey ? 'An API key is saved securely.' : 'No API key is saved.';
           clearKey.checked = false;
           apiKey.value = '';
@@ -257,6 +286,7 @@ function renderSettingsPanel(webview) {
         } else if (message.type === 'reset') {
           applyButton.disabled = false;
           baseUrl.value = message.baseUrl;
+          syncPresetFromBaseUrl();
           apiKey.value = '';
           clearKey.checked = false;
           keyState.textContent = 'No API key is saved.';

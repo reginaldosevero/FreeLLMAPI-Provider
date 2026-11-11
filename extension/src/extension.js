@@ -19,6 +19,7 @@ let connectionState = 'unknown';
 let openExtensionSettingsPanel = () => {};
 let refreshNativeModels = () => {};
 let lastModelListSignature;
+let lastLatencyMs;
 
 async function getConfig() {
   const config = vscode.workspace.getConfiguration('freeLlmProvider');
@@ -88,6 +89,9 @@ function setConnectionStatus(state, detail = '') {
   }
 
   connectionState = state;
+  const latencyNote = state === 'connected' && typeof lastLatencyMs === 'number'
+    ? ` Last response: ${lastLatencyMs} ms.`
+    : '';
   const states = {
     checking: {
       text: '$(sync~spin) FreeLLM',
@@ -98,7 +102,7 @@ function setConnectionStatus(state, detail = '') {
     connected: {
       text: '$(check) FreeLLM',
       color: '#3fb950',
-      tooltip: detail || 'FreeLLM connected. Click to choose a model.',
+      tooltip: (detail || 'FreeLLM connected. Click to choose a model.') + latencyNote,
       command: 'freellmapi.selectModel',
     },
     disconnected: {
@@ -115,6 +119,28 @@ function setConnectionStatus(state, detail = '') {
   connectionStatusItem.command = status.command;
 }
 
+async function maybePromptFirstRunSettings(baseUrl) {
+  if (!extensionContext) {
+    return;
+  }
+  if (extensionContext.workspaceState.get('freellmapi.firstRun') !== undefined) {
+    return;
+  }
+  const normalized = String(baseUrl || '').replace(/\/+$/, '');
+  const isDefault = !normalized || normalized === DEFAULT_BASE_URL;
+  if (!isDefault || connectionState !== 'disconnected') {
+    return;
+  }
+  await extensionContext.workspaceState.update('freellmapi.firstRun', 'done');
+  const action = await vscode.window.showInformationMessage(
+    'FreeLLM API is not configured. Open settings to configure the endpoint?',
+    'Open Settings'
+  );
+  if (action === 'Open Settings') {
+    openExtensionSettingsPanel();
+  }
+}
+
 async function updateConnectionStatus() {
   if (!connectionStatusItem || connectionCheckRunning) {
     return;
@@ -127,7 +153,9 @@ async function updateConnectionStatus() {
 
   try {
     const config = await getConfig();
+    const start = performance.now();
     const models = (await fetchModels(config.baseUrl, config.apiKey)).filter(isVisibleModel);
+    lastLatencyMs = Math.round(performance.now() - start);
     const signature = getModelListSignature(models);
     if (signature !== lastModelListSignature) {
       lastModelListSignature = signature;
@@ -143,6 +171,10 @@ async function updateConnectionStatus() {
       : 'network or configuration error';
     setConnectionStatus('disconnected', `FreeLLM ${reason}. Click to configure the connection.`);
     connectionStatusLog(`Connection check failed (${reason}).`);
+    try {
+      const config = await getConfig();
+      await maybePromptFirstRunSettings(config.baseUrl);
+    } catch {}
   } finally {
     connectionCheckRunning = false;
   }
