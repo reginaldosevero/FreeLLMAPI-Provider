@@ -251,6 +251,4 @@ function registerChatView(context, getConfig, provider) {
   context.subscriptions.push(...disposables);
 }
 
-module.exports = { registerChatView };
-
-module.exports = { registerChatView };
+module.exports = { registerChatView, renderChatView };

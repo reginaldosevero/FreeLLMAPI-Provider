@@ -353,4 +353,4 @@ function registerSettingsView(context, getConfig, applySettings, resetSettings, 
   context.subscriptions.push(...disposables);
 }
 
-module.exports = { registerSettingsView };
+module.exports = { registerSettingsView, renderSettingsView };
