@@ -194,7 +194,7 @@ function registerChatView(context, getConfig, provider) {
         webview.options = {
           enableScripts: true,
         };
-        webview.html = renderChatView(webview);
+        webview.html = renderChatView(webview, provider);
 
         const sendChat = async (userText) => {
           try {

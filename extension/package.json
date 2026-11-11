@@ -2,7 +2,7 @@
   "name": "free-llm-api-provider",
   "displayName": "Free LLM API Provider",
   "description": "Connect VS Code Chat to any OpenAI-compatible LLM endpoint. Supports 350+ models via FreeLLM API, automatic model discovery, secure key storage, and native Chat model picker integration.",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "publisher": "rsluna",
   "icon": "icon.png",
   "keywords": [
@@ -73,6 +73,11 @@
     "views": {
       "freellmapi-sidebar": [
         {
+          "id": "freellmapi/settingsView",
+          "name": "Settings",
+          "when": "true"
+        },
+        {
           "id": "freellmapi/chatView",
           "name": "Chat",
           "when": "true"
@@ -80,11 +85,6 @@
         {
           "id": "freellmapi/logsView",
           "name": "Logs",
-          "when": "true"
-        },
-        {
-          "id": "freellmapi/settingsView",
-          "name": "Settings",
           "when": "true"
         }
       ]
