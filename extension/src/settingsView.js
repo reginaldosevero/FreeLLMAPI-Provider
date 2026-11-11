@@ -345,6 +345,14 @@ function registerSettingsView(context, getConfig, applySettings, resetSettings, 
 
         await updateWebview();
 
+        // Send init message to trigger client-side setup
+        const config = await getConfig();
+        const hasKey = !!(await context.secrets.get('freeLlmProvider.apiKey')) || !!config.apiKey;
+        webview.postMessage({
+          type: 'keyState',
+          text: hasKey ? 'API key saved securely.' : 'No API key set.',
+        });
+
         return disposables;
       },
     })
