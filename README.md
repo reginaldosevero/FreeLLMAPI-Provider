@@ -80,6 +80,8 @@ It connects the native VS Code Chat model picker to any OpenAI-compatible endpoi
 automatic model discovery from `/v1/models`, an Auto routing option, and an API key kept in
 VS Code SecretStorage.
 
+### Installation
+
 ```bash
 cd extension
 npm install
@@ -94,8 +96,57 @@ install it directly from the Marketplace:
 ext install rsluna.free-llm-api-provider
 ```
 
-Configure it with **FreeLLM: Open extension settings**: set the base URL and key, search the
-models, then select **Apply**.
+### Features
+
+- **Native VS Code Chat Integration**: The extension registers a Language Model Chat Provider
+  that appears in VS Code's model picker alongside built-in models.
+- **Auto Router Best**: Uses FreeLLM's best-auto router which automatically selects the best
+  available model based on your request. This appears as "FreeLLM Auto Router Best" in the
+  model picker.
+- **Sidebar Views**: Three dedicated views available in the Activity Bar:
+  - **Chat**: Dedicated chat panel with message history and conversation support
+  - **Logs**: View application logs and responses
+  - **Settings**: Configure base URL, API key, and model selection
+- **Secure Key Storage**: API keys are stored in VS Code's SecretStorage, not in settings.json
+- **Automatic Model Discovery**: Model list automatically refreshes every 30 seconds
+- **Model Filtering**: Hidden models like `auto-route` and `auto/best-free` are filtered from
+  the model list
+- **Connection Status**: Status bar indicator shows connection health (green/red/yellow)
+
+### Configuration
+
+Use **FreeLLM: Open extension settings** or press `Ctrl+Shift+P` and run:
+- `FreeLLM: Configure and save settings` - Opens the settings panel
+- `FreeLLM: Test connection` - Tests the endpoint and sends a sample chat
+- `FreeLLM: Select model` - Opens model selection dialog
+- `FreeLLM: Show logs` - Displays application logs
+
+Set your configuration:
+- Base URL: `http://localhost:3000/v1`
+- API Key: (securely stored in SecretStorage)
+- Model: Select from discovered models or use "auto" for Auto Router
+
+## Development
+
+### Project Structure
+
+```
+.
+├── src/                    # API server source
+│   ├── app.js             # Express app with routes
+│   └── server.js          # Server bootstrap
+├── test/                   # Server and extension tests
+├── extension/              # VS Code extension source
+│   ├── src/
+│   │   ├── extension.js          # Main extension entry point
+│   │   ├── chatView.js           # Chat sidebar view
+│   │   ├── logsView.js           # Logs sidebar view
+│   │   ├── settingsView.js       # Settings sidebar view
+│   │   ├── settings-panel.js     # Original settings panel (legacy)
+│   │   └── language-model-provider.js  # VS Code language model provider
+│   └── package.json       # Extension manifest
+└── README.md              # This file
+```
 
 ## License
 
