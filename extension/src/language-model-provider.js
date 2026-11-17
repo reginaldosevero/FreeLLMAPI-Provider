@@ -207,17 +207,17 @@ function createLanguageModelChatProvider(
   async function runChatRequest(requestModelId, messages, options, progress, token, config, state) {
     const controller = new AbortController();
     const cancellation = token.onCancellationRequested(() => controller.abort());
-    // FreeLLM router supports max 128 tools
-      const MAX_TOOLS = 128;
-      const tools = Array.isArray(options.tools) && options.tools.length
-        ? options.tools.slice(0, MAX_TOOLS).map((tool) => ({
-            type: 'function',
-            function: {
-              name: tool.name,
-              description: tool.description,
-              parameters: tool.inputSchema || { type: 'object', properties: {} },
-            },
-          }))
+    // FreeLLM router supports max 128 tools; trim before forwarding
+        const MAX_TOOLS = 128;
+        const tools = Array.isArray(options.tools) && options.tools.length
+          ? options.tools.slice(0, MAX_TOOLS).map((tool) => ({
+              type: 'function',
+              function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.inputSchema || { type: 'object', properties: {} },
+              },
+            }))
       : undefined;
     const payload = {
       model: getRequestModelId(requestModelId),

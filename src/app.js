@@ -126,6 +126,10 @@ function createApp() {
 
   app.post('/v1/chat/completions', requireApiKey, async (req, res) => {
     const requestBody = req.body || {};
+        // FreeLLM router supports max 128 tools; trim before forwarding to upstream
+        if (Array.isArray(requestBody.tools) && requestBody.tools.length > 128) {
+          requestBody.tools = requestBody.tools.slice(0, 128);
+        }
     const messages = Array.isArray(requestBody.messages) ? requestBody.messages : [];
     const model = requestBody.model || 'demo-model';
     const openAiBaseUrl = process.env.OPENAI_BASE_URL?.replace(/\/+$/, '');
