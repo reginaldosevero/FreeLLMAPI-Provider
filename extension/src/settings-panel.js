@@ -354,7 +354,11 @@ function createSettingsPanel(vscode, context, handlers) {
       }
 
       if (message.type === 'applySettings') {
-        const result = await handlers.applySettings(message);
+              // Support both formats: { payload: {...} } from settingsView and direct properties from settings-panel
+              const input = message.payload || message;
+              const result = await handlers.applySettings(input);
+              // Send both event names for compatibility with settingsView (applyResult) and settings-panel (applied)
+              panel?.webview.postMessage({ type: 'applyResult', hasApiKey: result.hasApiKey, error: undefined });
         panel?.webview.postMessage({ type: 'applied', hasApiKey: result.hasApiKey });
         return;
       }
@@ -362,6 +366,13 @@ function createSettingsPanel(vscode, context, handlers) {
       if (message.type === 'resetSettings') {
         const reset = await handlers.resetSettings();
         if (reset) {
+                // Send both event names for compatibility
+                panel?.webview.postMessage({
+                  type: 'resetResult',
+                  baseUrl: reset.baseUrl,
+                  model: reset.model,
+                  models: reset.models,
+                });
           panel?.webview.postMessage({
             type: 'reset',
             baseUrl: reset.baseUrl,
