@@ -314,11 +314,16 @@ function registerSettingsView(context, getConfig, applySettings, resetSettings, 
             await updateWebview();
           } else if (event.type === 'applySettings') {
             try {
-              const result = await applySettings(event.payload);
+                        const payload = event.payload || event;
+                        const result = await applySettings(payload);
               webview.postMessage({
                 type: 'applyResult',
                 hasApiKey: result.hasApiKey,
               });
+                        webview.postMessage({
+                          type: 'applied',
+                          hasApiKey: result.hasApiKey,
+                        });
             } catch (error) {
               webview.postMessage({
                 type: 'applyResult',
@@ -334,6 +339,12 @@ function registerSettingsView(context, getConfig, applySettings, resetSettings, 
                 model: result?.model,
                 models: result?.models,
               });
+                        webview.postMessage({
+                          type: 'reset',
+                          baseUrl: result?.baseUrl,
+                          model: result?.model,
+                          models: result?.models,
+                        });
             } catch (error) {
               webview.postMessage({
                 type: 'resetResult',

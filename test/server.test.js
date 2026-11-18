@@ -196,3 +196,43 @@ test('POST /v1/chat/completions rejects requests without API key when configured
     delete process.env.FREE_LLM_API_KEY;
   }
 });
+
+test('POST /v1/chat/completions trims tools to 128 before forwarding to upstream', async () => {
+  const baseUrl = 'https://provider.example/v1';
+  let receivedTools;
+    process.env.FREE_LLM_API_KEY = 'local-test-key';
+  process.env.OPENAI_BASE_URL = baseUrl;
+  process.env.OPENAI_API_KEY = 'upstream-test-key';
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    const body = JSON.parse(options.body);
+    receivedTools = body.tools;
+    return new Response(JSON.stringify({
+      choices: [{ index: 0, message: { role: 'assistant', content: 'Trimmed OK' } }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  try {
+    const tools = Array.from({ length: 150 }, (_, i) => ({
+      type: 'function',
+      function: { name: `tool_${i}`, description: `Tool ${i}`, parameters: {} },
+    }));
+
+    const response = await createRequest(createApp(), 'POST', '/v1/chat/completions', {
+      model: 'demo-model',
+      messages: [{ role: 'user', content: 'Use tools' }],
+      tools,
+    }, { Authorization: 'Bearer local-test-key' });
+
+    assert.equal(response.statusCode, 200);
+    assert.ok(receivedTools, 'upstream should have received tools');
+    assert.equal(receivedTools.length, 128, `expected 128 tools, got ${receivedTools.length}`);
+    assert.equal(receivedTools[0].function.name, 'tool_0');
+    assert.equal(receivedTools[127].function.name, 'tool_127');
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.OPENAI_BASE_URL;
+    delete process.env.OPENAI_API_KEY;
+  }
+});

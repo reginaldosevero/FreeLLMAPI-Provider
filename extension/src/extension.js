@@ -8,6 +8,7 @@ const {
   parseModels,
 } = require('./language-model-provider');
 const { createSettingsPanel } = require('./settings-panel');
+const { registerSettingsView } = require('./settingsView');
 
 const API_KEY_SECRET = 'freeLlmProvider.apiKey';
 const DEFAULT_BASE_URL = 'http://localhost:3000/v1';
@@ -408,6 +409,8 @@ function activate(context) {
     applySettings: applyPanelSettings,
     resetSettings: resetPanelSettings,
   });
+
+  registerSafely(context, () => registerSettingsView(context, getConfig, applyPanelSettings, resetPanelSettings, async (baseUrl, apiKey) => (await fetchModels(baseUrl, apiKey)).filter(isVisibleModel)), 'View freellmapi.settingsView', log);
 
   const modelInformationChanged = new vscode.EventEmitter();
   refreshNativeModels = () => modelInformationChanged.fire();
